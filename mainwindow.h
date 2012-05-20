@@ -7,6 +7,7 @@
 
 #include <QMainWindow>
 #include <QImage>
+#include <QVector>
 
 namespace Ui {
 class MainWindow;
@@ -21,18 +22,17 @@ public:
     ~MainWindow();
 
 private slots:
-    void updateImage();
     void openFile();
     void printError(QString);
+    void setImage(int);
     
 private:
-    Ui::MainWindow * ui;
-    DG_image       * _image;
-    uchar          * _imageData;
-    QByteArray       _fileData;
-    QVector<QRgb>    _colors;
+    Ui::MainWindow   * ui;
+    uchar            * _fileData;
+    QVector<DG_image*> _images;
 
     void makeCheckImage(void);
+    void deleteImages();
 };
 
 #endif // MAINWINDOW_H
