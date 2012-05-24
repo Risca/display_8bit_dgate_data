@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->actionAboutQt,SIGNAL(triggered()),qApp,SLOT(aboutQt()));
     connect(ui->actionOpen,SIGNAL(triggered()),this,SLOT(openFile()));
-    connect(ui->imageCountSpinBox,SIGNAL(valueChanged(int)),this,SLOT(setImage(int)));
+    connect(ui->imageCountSlider,SIGNAL(valueChanged(int)),this,SLOT(setImage(int)));
     connect(ui->offsetSpinBox,SIGNAL(valueChanged(int)),this,SLOT(changeOffset(int)));
 }
 
@@ -88,12 +88,12 @@ void MainWindow::openFile()
         in >> offset;
     }
     if (!_images.isEmpty()) {
-        ui->imageCountSpinBox->setEnabled(true);
-        ui->imageCountSpinBox->setMaximum(_images.size());
+        ui->imageCountSlider->setEnabled(true);
+        ui->imageCountSlider->setMaximum(_images.size());
         setImage(1);
     } else {
         ui->imageLabel->clear();
-        ui->imageCountSpinBox->setEnabled(false);
+        ui->imageCountSlider->setEnabled(false);
     }
     ui->statusBar->showMessage("Read "+QString::number(_images.size())+" images");
     std::cout << "Read " << _images.size() << " images" << std::endl;
@@ -127,7 +127,7 @@ void MainWindow::setImage(int n)
         ui->offsetSpinBox->setEnabled(true);
         ui->offsetSpinBox->setValue(image->imageOffset());
     }
-    ui->imageHeaderLabel->setText("image #"+QString::number(ui->imageCountSpinBox->value())+
+    ui->imageHeaderLabel->setText("image #"+QString::number(ui->imageCountSlider->value())+
                                   " (0x"+QString::number(image->type(),16)+
                                   ", 0x"+QString::number(image->fileOffset(),16)+
                                   ", "+QString::number(image->width())+
@@ -139,7 +139,7 @@ void MainWindow::setImage(int n)
 
 void MainWindow::changeOffset(int offset)
 {
-    int idx=ui->imageCountSpinBox->value()-1;
+    int idx=ui->imageCountSlider->value()-1;
     DG_image * image, * old=_images.at(idx);
     image=new DG_image(_fileData,old->fileOffset(),offset,
                        old->width(),old->height(),old->type(),false);
