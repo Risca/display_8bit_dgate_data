@@ -17,6 +17,7 @@ SOURCES += main.cpp\
 
 HEADERS  += mainwindow.h \
     hexspinbox.h \
-    dg_image.h
+    dg_image.h \
+    vga_color_palette.h
 
 FORMS    += mainwindow.ui
