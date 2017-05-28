@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>364</width>
+    <width>624</width>
     <height>202</height>
    </rect>
   </property>
@@ -30,9 +30,6 @@
       <property name="focusPolicy">
        <enum>Qt::NoFocus</enum>
       </property>
-      <property name="widgetResizable">
-       <bool>true</bool>
-      </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
       </property>
@@ -41,19 +38,10 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>342</width>
+         <width>602</width>
          <height>71</height>
         </rect>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QLabel" name="imageLabel">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-       </layout>
       </widget>
      </widget>
     </item>
@@ -71,6 +59,39 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout_3">
+        <property name="fieldGrowthPolicy">
+         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="zoomLabel">
+          <property name="text">
+           <string>Zoom</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSlider" name="zoomSlider">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>4</number>
+          </property>
+          <property name="pageStep">
+           <number>1</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <layout class="QFormLayout" name="formLayout_2">
@@ -121,6 +142,13 @@
        </layout>
       </item>
       <item>
+       <widget class="QCheckBox" name="paletteCheckBox">
+        <property name="text">
+         <string>Derived palette</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -150,7 +178,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>364</width>
+     <width>624</width>
      <height>22</height>
     </rect>
    </property>

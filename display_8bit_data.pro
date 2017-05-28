@@ -21,3 +21,5 @@ HEADERS  += mainwindow.h \
     vga_color_palette.h
 
 FORMS    += mainwindow.ui
+
+QMAKE_CXXFLAGS += -fPIC

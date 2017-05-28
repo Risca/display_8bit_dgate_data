@@ -10,6 +10,8 @@
 #include <QFile>
 #include <QDataStream>
 #include <QGraphicsPixmapItem>
+#include <QMouseEvent>
+#include <QTimer>
 #include <iostream>
 #include <ios>
 #include <new>
@@ -18,14 +20,28 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     _fileData(NULL),
-    _file(NULL)
+    _file(NULL),
+    _imageLabel(new QLabel),
+    _scaleFactor(1)
 {
     ui->setupUi(this);
 
+    _imageLabel->setBackgroundRole(QPalette::Base);
+    _imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    _imageLabel->setScaledContents(true);
+    _imageLabel->setMouseTracking(true);
+
+    ui->scrollArea->setBackgroundRole(QPalette::Dark);
+    ui->scrollArea->setWidget(_imageLabel);
+
     connect(ui->actionAboutQt,SIGNAL(triggered()),qApp,SLOT(aboutQt()));
     connect(ui->actionOpen,SIGNAL(triggered()),this,SLOT(openFile()));
+    connect(this, SIGNAL(fileOpened(QString)), this, SLOT(processFile(QString)));
     connect(ui->imageCountSlider,SIGNAL(valueChanged(int)),this,SLOT(setImage(int)));
     connect(ui->offsetSpinBox,SIGNAL(valueChanged(int)),this,SLOT(changeOffset(int)));
+    connect(ui->paletteCheckBox,SIGNAL(stateChanged(int)),this,SLOT(changePalette()));
+    connect(ui->zoomSlider,SIGNAL(valueChanged(int)),this,SLOT(scaleImage(int)));
+    _imageLabel->installEventFilter(this);
 }
 
 MainWindow::~MainWindow()
@@ -39,18 +55,26 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFile()
 {
+    QString filename = QFileDialog::getOpenFileName(this,tr("Open file"));
+    if (!filename.isEmpty()) {
+        emit fileOpened(filename);
+    }
+}
+
+void MainWindow::processFile(const QString &filename)
+{
     quint32 offset;
     quint16 tmp;
     quint16 width, height;
     DG_image * image;
-    QString fileName = QFileDialog::getOpenFileName(this,tr("Open file"));
+
     if (_file != NULL) delete _file;
-    _file=new QFile(fileName);
+    _file=new QFile(filename);
     if (!_file->open(QIODevice::ReadOnly)) {
         printError("Failed to open file");
         return;
     }
-    setWindowTitle(fileName);
+    setWindowTitle(filename);
     _fileData = _file->map(0,_file->size());
     deleteImages();
     QDataStream in(_file);
@@ -65,7 +89,18 @@ void MainWindow::openFile()
         case DG_BigAnimation:
             // 4 byte header
             image = new DG_image(_fileData,offset,4,width,height,tmp,false);
-//            image->setColorTable(_images.back()->colorTable());
+        {
+            int i=_images.size();
+            DG_image * tmpImage;
+            do {
+                i--;
+                tmpImage=_images.at(i);
+            } while (!tmpImage->hasPalette() && i!=0);
+
+            if (tmpImage->hasPalette()) {
+                image->setColorTable(tmpImage->colorTable());
+            }
+        }
             break;
 
         case DG_BookAnimation:
@@ -88,11 +123,13 @@ void MainWindow::openFile()
         in >> offset;
     }
     if (!_images.isEmpty()) {
+        ui->zoomSlider->setEnabled(true);
         ui->imageCountSlider->setEnabled(true);
         ui->imageCountSlider->setMaximum(_images.size());
         setImage(1);
     } else {
-        ui->imageLabel->clear();
+        _imageLabel->clear();
+        ui->zoomSlider->setEnabled(false);
         ui->imageCountSlider->setEnabled(false);
     }
     ui->statusBar->showMessage("Read "+QString::number(_images.size())+" images");
@@ -111,7 +148,8 @@ void MainWindow::setImage(int n)
         return;
 
     DG_image * image=_images.at(n-1);
-    ui->imageLabel->setPixmap(QPixmap::fromImage(*image));
+    _imageLabel->setPixmap(QPixmap::fromImage(*image));
+    scaleImage(_scaleFactor);
     switch (image->type()) {
     case DG_BigImage:
     case DG_SpellAnimation:
@@ -128,12 +166,14 @@ void MainWindow::setImage(int n)
         ui->offsetSpinBox->setValue(image->imageOffset());
     }
     ui->imageHeaderLabel->setText("image #"+QString::number(ui->imageCountSlider->value())+
-                                  " (0x"+QString::number(image->type(),16)+
-                                  ", 0x"+QString::number(image->fileOffset(),16)+
+                                  " (type: 0x"+QString::number(image->type(),16)+
+                                  ", file offset: 0x"+QString::number(image->fileOffset(),16)+
                                   ", "+QString::number(image->width())+
                                   "x"+QString::number(image->height())+
                                   "==0x"+QString::number(image->height()*image->width(),16)+
-                                  ", 0x"+QString::number(image->fileOffset()+image->imageOffset()+image->height()*image->width(),16)+
+                                  ", image header size: 0x"+QString::number(image->imageOffset(),16)+
+                                  ", coordinates: ("+QString::number(image->coordinates().x())+", "+
+                                                     QString::number(image->coordinates().y())+
                                   ")");
 }
 
@@ -146,6 +186,22 @@ void MainWindow::changeOffset(int offset)
     _images.replace(idx,image);
     delete old;
     setImage(idx+1);
+}
+
+void MainWindow::changePalette()
+{
+    foreach(DG_image * img,_images) {
+        if (!img->hasPalette()) {
+            img->switchColorTable();
+        }
+    }
+    setImage(ui->imageCountSlider->value());
+}
+
+void MainWindow::scaleImage(int factor)
+{
+    _scaleFactor=factor;
+    _imageLabel->resize(factor * _imageLabel->pixmap()->size());
 }
 
 void MainWindow::makeCheckImage(void)
@@ -172,4 +228,33 @@ void MainWindow::deleteImages()
         _images.pop_back();
         delete image;
     }
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
+{
+    if (obj==_imageLabel && ev->type()==QEvent::MouseMove) {
+        if (_images.isEmpty())
+            return false;
+        DG_image *image=_images.at(ui->imageCountSlider->value()-1);
+        // Get geometry of current image
+        int width=image->width();
+        int height=image->height();
+        // Get coordinates of mouse (inside imageLabel).
+        QMouseEvent * mEv=static_cast<QMouseEvent*>(ev);
+        int x = mEv->pos().x() / _scaleFactor;
+        int y = mEv->pos().y()/_scaleFactor;
+        // Check bounds
+        if (x > width)
+            x=width;
+        if (x < 0)
+            x=0;
+        if (y > height)
+            y=height;
+        if (y < 0)
+            y=0;
+        unsigned char pixelIndex=image->pixelIndex(x,y);
+        ui->statusBar->showMessage("("+QString::number(x)+","+QString::number(y)+") 0x"+QString::number(pixelIndex, 16) + "->"+QString::number(image->pixel(x,y), 16));
+        return true;
+    }
+    return false;
 }

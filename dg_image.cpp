@@ -4,11 +4,23 @@ DG_image::DG_image(const uchar *data, quint32 fileOffset, quint32 imageOffset, i
     QImage(data+fileOffset+imageOffset,width,height,width,QImage::Format_Indexed8),
     _type(type),
     _fileOffset(fileOffset),
-    _imageOffset(imageOffset)
+    _imageOffset(imageOffset),
+    _palette(palette)
 {
-    QVector<QRgb> _colors;
-    if (palette) {
-        data+=fileOffset+((imageOffset==3*256) ? 0 : imageOffset-3*256);
+    QVector<QRgb> colors;
+    for (int i=0;i<256;i++) {
+        QRgb color = 0xff000000 | (i<<16) | (i<<8) | i;
+        colors.push_back(color);
+    }
+    _altColorTable=colors;
+    if ((imageOffset == 4) || (imageOffset == (4 + 3*256))) {
+        quint16 x = *reinterpret_cast<const quint16*>(data + fileOffset);
+        quint16 y = *reinterpret_cast<const quint16*>(data + fileOffset + 2);
+        _coordinates = QPoint(x, y);
+    }
+    if (_palette) {
+        colors.clear();
+        data+=fileOffset+(imageOffset-3*256);
         for (int i=0;i<256;i++) {
             // red, green, blue
             uchar r=*data++;
@@ -19,13 +31,15 @@ DG_image::DG_image(const uchar *data, quint32 fileOffset, quint32 imageOffset, i
             g = (g<<2) | (g>>4);
             b = (b<<2) | (b>>4);
             QRgb color = 0xff000000 | (r<<16) | (g<<8) | b;
-            _colors.push_back(color);
-        }
-    } else {
-        for (int i=0;i<256;i++) {
-            QRgb color = 0xff000000 | (i<<16) | (i<<8) | i;
-            _colors.push_back(color);
+            colors.push_back(color);
         }
     }
-    setColorTable(_colors);
+    setColorTable(colors);
+}
+
+void DG_image::switchColorTable()
+{
+    QVector<QRgb> tmp=_altColorTable;
+    _altColorTable=colorTable();
+    setColorTable(tmp);
 }

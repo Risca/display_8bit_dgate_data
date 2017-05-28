@@ -2,6 +2,7 @@
 #define DG_IMAGE_H
 
 #include <QImage>
+#include <QPoint>
 
 #define DG_ClosedBook           0x0300 // No header
 #define DG_SpellAnimation       0x0301 // 4 byte header
@@ -20,10 +21,16 @@ public:
     quint16 type() { return _type; }
     quint32 fileOffset() { return _fileOffset; }
     quint32 imageOffset() { return _imageOffset; }
+    bool hasPalette() { return _palette; }
+    QPoint coordinates() { return _coordinates; }
+    void switchColorTable();
 private:
     quint16 _type;
     quint32 _fileOffset;
     quint32 _imageOffset;
+    bool    _palette;
+    QPoint _coordinates;
+    QVector<QRgb> _altColorTable;
 };
 
 #endif // DG_IMAGE_H
